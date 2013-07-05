@@ -26,6 +26,8 @@ var program = require('commander');
 var cheerio = require('cheerio');
 var HTMLFILE_DEFAULT = "index.html";
 var CHECKSFILE_DEFAULT = "checks.json";
+var URL_DEFAULT = "http://stark-ravine-2796.herokuapp.com";
+var rest = require('restler');
 
 var assertFileExists = function(infile) {
     var instr = infile.toString();
@@ -36,6 +38,11 @@ var assertFileExists = function(infile) {
     return instr;
 };
 
+var getHtmlFromUrl = function(url){
+  console.log(url);  
+};
+
+
 var cheerioHtmlFile = function(htmlfile) {
     return cheerio.load(fs.readFileSync(htmlfile));
 };
@@ -44,9 +51,16 @@ var loadChecks = function(checksfile) {
     return JSON.parse(fs.readFileSync(checksfile));
 };
 
-var checkHtmlFile = function(htmlfile, checksfile) {
-    $ = cheerioHtmlFile(htmlfile);
+var checkHtmlFile = function(htmlfile, checksfile, url_data) {
+    if (htmlfile !== null) {
+      $ = cheerioHtmlFile(htmlfile);
+      console.log('file');
+    } else {
+      $ = cheerio.load(url_data);
+
+    }
     var checks = loadChecks(checksfile).sort();
+    console.log(checks);
     var out = {};
     for(var ii in checks) {
         var present = $(checks[ii]).length > 0;
@@ -59,8 +73,18 @@ if(require.main == module) {
     program
         .option('-c, --checks ', 'Path to checks.json', assertFileExists, CHECKSFILE_DEFAULT)
         .option('-f, --file ', 'Path to index.html', assertFileExists, HTMLFILE_DEFAULT)
+        .option('-u, --url  ' , 'URL to be parsed', getHtmlFromUrl, URL_DEFAULT)
         .parse(process.argv);
-    var checkJson = checkHtmlFile(program.file, program.checks);
+    if (program.file) {
+      var checkJson = checkHtmlFile(program.file, program.checks, null);
+    } else if (program.url) {
+       console.log('condition passwed');
+      rest.get(program.url.toString()).on('complete', function(data) {
+	  console.log(data.body);
+	  var checkJson = checkHtmlFile(null, program.checks, data); 
+      }); 
+    }
+    console.log(checkJson);
     var outJson = JSON.stringify(checkJson, null, 4);
     console.log(outJson);
 } else {
